@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Task, ParkingItem } from '@/types/task';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useHourglassTimer } from '@/hooks/useHourglassTimer';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
+import { useDocumentPip } from '@/hooks/useDocumentPip';
 import { requestNotificationPermission } from '@/lib/audio';
 
 import { Navbar } from '@/components/Navbar';
@@ -12,6 +14,7 @@ import { SingleTaskView } from '@/components/SingleTaskView';
 import { ParkingLotModal } from '@/components/ParkingLotModal';
 import { CalendarSyncPanel } from '@/components/CalendarSyncPanel';
 import { TaskManagerModal } from '@/components/TaskManagerModal';
+import { FloatingPipWidget } from '@/components/FloatingPipWidget';
 
 // Tareas iniciales de ejemplo si es la primera vez que se abre la app
 const INITIAL_TASKS: Task[] = [
@@ -49,7 +52,7 @@ const INITIAL_PARKING: ParkingItem[] = [
 
 export default function HomePage() {
   // Persistencia local en localStorage con fallback
-  const [tasks, setTasks, tasksHydrated] = useLocalStorage<Task[]>('tdah_tasks_v1', INITIAL_TASKS);
+  const [tasks, setTasks] = useLocalStorage<Task[]>('tdah_tasks_v1', INITIAL_TASKS);
   const [activeTaskId, setActiveTaskId] = useLocalStorage<string | null>('tdah_active_id_v1', 'demo-task-1');
   const [parkingItems, setParkingItems] = useLocalStorage<ParkingItem[]>('tdah_parking_v1', INITIAL_PARKING);
   const [soundEnabled, setSoundEnabled] = useLocalStorage<boolean>('tdah_sound_enabled', true);
@@ -58,6 +61,9 @@ export default function HomePage() {
   const [isParkingLotOpen, setIsParkingLotOpen] = useState(false);
   const [isCalendarSyncOpen, setIsCalendarSyncOpen] = useState(false);
   const [isTaskManagerOpen, setIsTaskManagerOpen] = useState(false);
+
+  // Hook para la Ventana Flotante Siempre Visible (Picture-in-Picture)
+  const { isPipActive, pipContainer, openPip, closePip } = useDocumentPip();
 
   // Módulo de Google Calendar
   const {
@@ -81,10 +87,7 @@ export default function HomePage() {
   // Manejador al terminar el temporizador
   const handleTimerComplete = useCallback(() => {
     // Si la tarea concluye el tiempo
-    if (activeTask) {
-      // Dejar que el usuario decida si la marca completada o añade 5 min de gracia
-    }
-  }, [activeTask]);
+  }, []);
 
   // Hook de temporizador semáforo
   const {
@@ -286,6 +289,8 @@ export default function HomePage() {
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled((prev) => !prev)}
         isCalendarConnected={isSignedIn}
+        isPipActive={isPipActive}
+        onTogglePip={() => (isPipActive ? closePip() : openPip())}
       />
 
       {/* Contenedor Principal: Vista de Foco Único */}
@@ -304,8 +309,26 @@ export default function HomePage() {
           onOpenTaskManager={() => setIsTaskManagerOpen(true)}
           soundEnabled={soundEnabled}
           onToggleSound={() => setSoundEnabled((prev) => !prev)}
+          isPipActive={isPipActive}
+          onTogglePip={() => (isPipActive ? closePip() : openPip())}
         />
       </div>
+
+      {/* Renderizado en Ventanita Flotante Nativa (Always-on-Top / Picture-in-Picture) */}
+      {pipContainer &&
+        createPortal(
+          <FloatingPipWidget
+            task={activeTask}
+            timerStatus={timerStatus}
+            trafficState={trafficState}
+            onStartTimer={startTimer}
+            onPauseTimer={pauseTimer}
+            onAddMinutes={addMinutes}
+            onCompleteTask={handleCompleteTask}
+            onAddParkingItem={handleAddParkingItem}
+          />,
+          pipContainer
+        )}
 
       {/* Modal: Parking Lot de Ideas / Bloc de Estacionamiento */}
       <ParkingLotModal
@@ -349,7 +372,7 @@ export default function HomePage() {
 
       {/* Barra de atajo rápido inferior sutil */}
       <footer className="py-3 px-4 border-t border-slate-900 bg-slate-950/60 text-center text-xs text-slate-400">
-        Tip TDAH: Presiona <kbd className="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-slate-300 border border-slate-800">Ctrl + Espacio</kbd> en cualquier momento para aparcar una distracción sin perder el ritmo.
+        Tip TDAH: Presiona <kbd className="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-slate-300 border border-slate-800">Ctrl + Espacio</kbd> para aparcar distracciones o haz clic en <span className="text-emerald-400 font-semibold">📌 Ventanita</span> para fijar el temporizador siempre visible sobre tus otras aplicaciones.
       </footer>
     </main>
   );

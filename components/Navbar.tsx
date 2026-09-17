@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Shield, Lightbulb, Calendar, Layers, Volume2, VolumeX, Sparkles } from 'lucide-react';
+import { Shield, Lightbulb, Calendar, Layers, Volume2, VolumeX, PictureInPicture2 } from 'lucide-react';
 
 interface NavbarProps {
   parkedCount: number;
@@ -11,6 +11,8 @@ interface NavbarProps {
   soundEnabled: boolean;
   onToggleSound: () => void;
   isCalendarConnected: boolean;
+  isPipActive: boolean;
+  onTogglePip: () => void;
 }
 
 export function Navbar({
@@ -21,6 +23,8 @@ export function Navbar({
   soundEnabled,
   onToggleSound,
   isCalendarConnected,
+  isPipActive,
+  onTogglePip,
 }: NavbarProps) {
   return (
     <header className="w-full border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md sticky top-0 z-40">
@@ -42,6 +46,23 @@ export function Navbar({
 
         {/* Acciones Rápidas */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Botón Ventanita Flotante Siempre Visible (PiP) */}
+          <button
+            onClick={onTogglePip}
+            type="button"
+            className={`flex items-center gap-1.5 py-2 px-3 sm:px-3.5 rounded-xl border text-xs font-semibold shadow-sm transition-all hover:scale-105 active:scale-95 ${
+              isPipActive
+                ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-600/30'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700/60'
+            }`}
+            title="Fijar en ventanita flotante que no se va (Picture-in-Picture)"
+          >
+            <PictureInPicture2 className={`w-4 h-4 ${isPipActive ? 'text-white' : 'text-emerald-400'}`} />
+            <span className="hidden sm:inline">
+              {isPipActive ? 'Flotando' : 'Ventanita'}
+            </span>
+          </button>
+
           {/* Botón Parking Lot */}
           <button
             onClick={onOpenParkingLot}

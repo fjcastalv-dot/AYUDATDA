@@ -3,7 +3,7 @@
 import React from 'react';
 import { Task, TrafficLightState, TimerStatus } from '@/types/task';
 import { HourglassTimer } from './HourglassTimer';
-import { Target, CheckCircle, ArrowRight, Lightbulb, Calendar, RefreshCw, Layers } from 'lucide-react';
+import { Target, CheckCircle, ArrowRight, Lightbulb, Calendar, RefreshCw, Layers, PictureInPicture2 } from 'lucide-react';
 
 interface SingleTaskViewProps {
   task: Task | null;
@@ -19,6 +19,8 @@ interface SingleTaskViewProps {
   onOpenTaskManager: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  isPipActive?: boolean;
+  onTogglePip?: () => void;
 }
 
 export function SingleTaskView({
@@ -35,6 +37,8 @@ export function SingleTaskView({
   onOpenTaskManager,
   soundEnabled,
   onToggleSound,
+  isPipActive = false,
+  onTogglePip,
 }: SingleTaskViewProps) {
   // Estado vacío: Ninguna tarea seleccionada para foco
   if (!task) {
@@ -124,6 +128,26 @@ export function SingleTaskView({
               <span className="text-slate-500">Regla: No abras subtareas nuevas</span>
             </div>
           </div>
+
+          {/* Botón Destacado: Fijar en Ventanita Flotante Siempre Visible (Picture-in-Picture) */}
+          {onTogglePip && (
+            <button
+              onClick={onTogglePip}
+              type="button"
+              className={`w-full py-3.5 px-4 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg hover:scale-[1.01] active:scale-[0.99] ${
+                isPipActive
+                  ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-600/30'
+                  : 'bg-gradient-to-r from-emerald-950/60 to-slate-900 hover:from-emerald-900/60 text-emerald-300 border-emerald-500/40 shadow-emerald-950/40'
+              }`}
+            >
+              <PictureInPicture2 className="w-5 h-5 text-emerald-400" />
+              <span>
+                {isPipActive
+                  ? 'Ventanita Flotante Abierta (Clic para cerrar)'
+                  : '📌 Fijar en Ventanita Flotante (Siempre Visible)'}
+              </span>
+            </button>
+          )}
 
           {/* Botón de Emergencia Anti-Yak Shaving (Parking Lot) */}
           <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 flex flex-col gap-3">

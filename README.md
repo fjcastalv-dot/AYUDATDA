@@ -19,7 +19,12 @@ Construida con **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **
    - Oculta las listas interminables de tareas pendientes que saturan la memoria de trabajo.
    - Presenta una **"Definición de Terminado" (Definition of Done)** obligatoria: un criterio concreto e indiscutible que le dice al cerebro exactamente cuándo parar, frenando el perfeccionismo compulsivo.
 
-3. **Parking Lot / Bloc de Estacionamiento (`Ctrl + Espacio` / `Cmd + K`):**
+3. **📌 Ventanita Flotante Siempre Visible (Picture-in-Picture / Always-on-Top):**
+   - Basada en la API estándar de **Document Picture-in-Picture**.
+   - Permite desacoplar el temporizador, el estado cromático semáforo y la Definición de Terminado en una **pequeña ventana flotante nativa que permanece fija por encima de cualquier otro programa en Windows** (Word, Excel, Visual Studio Code, videojuegos, etc.), exactamente igual a la vista compacta de la app de Reloj de Windows.
+   - Si cambias de pestaña o minimizas el navegador, la ventanita sigue ahí mostrándote el tiempo restante y la tarea activa.
+
+4. **Parking Lot / Bloc de Estacionamiento (`Ctrl + Espacio` / `Cmd + K`):**
    - Cuando surge una idea repentina o tentación de saltar a otra cosa (*"¿y si ordeno las pestañas?"*), presionar `Ctrl + Espacio` permite escribirla y aparcarla en 2 segundos, sacándola de la mente sin romper el hiperfoco.
 
 4. **Búfer Automático en Google Calendar (5 a 15 min):**
