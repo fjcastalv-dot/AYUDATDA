@@ -224,9 +224,14 @@ export function TaskManagerModal({
                       <p className="text-xs text-slate-400 mt-1">
                         <strong className="text-emerald-400/90 font-medium">DoD:</strong> {t.definitionOfDone}
                       </p>
-                      <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-2 font-mono">
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 mt-2 font-mono">
                         <span>⏱️ {t.durationMinutes} min</span>
                         <span>🛡️ Búfer: {t.bufferMinutes} min</span>
+                        {t.subtasks && t.subtasks.length > 0 && (
+                          <span className="text-emerald-400 bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-900/50">
+                            📋 {t.subtasks.filter(st => st.status === 'completed').length}/{t.subtasks.length} subtareas
+                          </span>
+                        )}
                       </div>
                     </div>
 

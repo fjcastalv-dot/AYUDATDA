@@ -1,28 +1,32 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Task, TrafficLightState, TimerStatus } from '@/types/task';
-import { Play, Pause, Plus, CheckCircle2, ShieldAlert, Sparkles, AlertTriangle, Lightbulb, Check } from 'lucide-react';
+import { Task, SubTask, TrafficLightState, TimerStatus } from '@/types/task';
+import { Play, Pause, Plus, CheckCircle2, ShieldAlert, Sparkles, AlertTriangle, Lightbulb, Check, ChevronRight } from 'lucide-react';
 
 interface FloatingPipWidgetProps {
   task: Task | null;
+  activeSubtask: SubTask | null;
   timerStatus: TimerStatus;
   trafficState: TrafficLightState;
   onStartTimer: () => void;
   onPauseTimer: () => void;
   onAddMinutes: (minutes: number) => void;
   onCompleteTask: (taskId: string) => void;
+  onCompleteSubtask?: (taskId: string, subtaskId: string) => void;
   onAddParkingItem: (content: string) => void;
 }
 
 export function FloatingPipWidget({
   task,
+  activeSubtask,
   timerStatus,
   trafficState,
   onStartTimer,
   onPauseTimer,
   onAddMinutes,
   onCompleteTask,
+  onCompleteSubtask,
   onAddParkingItem,
 }: FloatingPipWidgetProps) {
   const [quickIdea, setQuickIdea] = useState('');
@@ -79,18 +83,35 @@ export function FloatingPipWidget({
     );
   }
 
+  const subtasks = task.subtasks || [];
+  const activeStepIdx = activeSubtask ? subtasks.findIndex((st) => st.id === activeSubtask.id) + 1 : 0;
+
   return (
     <div
       className={`h-full w-full bg-slate-950 text-slate-100 flex flex-col justify-between p-3 select-none overflow-hidden font-sans border-2 ${colorStyles.border} ${colorStyles.glow}`}
     >
-      {/* Barra superior: Título y Estado Semáforo */}
+      {/* Barra superior: Título (y Subtarea si existe) y Estado Semáforo */}
       <div>
-        <div className="flex items-center justify-between gap-2 mb-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate max-w-[160px]">
-            {task.title}
-          </span>
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="min-w-0 flex-1">
+            {activeSubtask ? (
+              <div className="leading-tight">
+                <span className="text-[9px] text-slate-400 truncate block">
+                  📁 {task.title}
+                </span>
+                <span className="text-[11px] font-black text-slate-100 truncate block">
+                  Paso {activeStepIdx}/{subtasks.length}: {activeSubtask.title}
+                </span>
+              </div>
+            ) : (
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300 truncate block max-w-[160px]">
+                {task.title}
+              </span>
+            )}
+          </div>
+
           <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${colorStyles.badge}`}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0 ${colorStyles.badge}`}
           >
             {color === 'green' && <Sparkles className="w-2.5 h-2.5" />}
             {color === 'yellow' && <AlertTriangle className="w-2.5 h-2.5" />}
@@ -114,9 +135,9 @@ export function FloatingPipWidget({
           {formattedTime}
         </div>
 
-        {/* Definición de Terminado fija para evitar desviaciones */}
-        <div className="mt-1.5 px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-800 text-center max-w-full">
-          <p className="text-[11px] text-slate-300 font-semibold line-clamp-2 leading-tight">
+        {/* Definición de Terminado o subtarea fija */}
+        <div className="mt-1 px-2.5 py-0.5 rounded-lg bg-slate-900/90 border border-slate-800 text-center max-w-full">
+          <p className="text-[10px] text-slate-300 font-semibold line-clamp-1 leading-tight">
             🎯 <span className="text-emerald-400 font-bold">DoD:</span> {task.definitionOfDone || 'Terminar el objetivo sin perfeccionismo.'}
           </p>
         </div>
@@ -195,14 +216,27 @@ export function FloatingPipWidget({
             <Lightbulb className="w-3.5 h-3.5" />
           </button>
 
-          <button
-            onClick={() => onCompleteTask(task.id)}
-            type="button"
-            title="Marcar como terminada"
-            className="p-1.5 px-2 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-400 border border-emerald-800/50 transition-all"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5" />
-          </button>
+          {/* Si hay subtarea activa, botón de avance rápido de paso; si no, completar toda la tarea */}
+          {activeSubtask && onCompleteSubtask ? (
+            <button
+              onClick={() => onCompleteSubtask(task.id, activeSubtask.id)}
+              type="button"
+              title="Completar subtarea y avanzar a la siguiente"
+              className="p-1.5 px-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-800 text-emerald-300 border border-emerald-700/60 font-bold text-xs flex items-center gap-1 transition-all"
+            >
+              <span>Paso</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              onClick={() => onCompleteTask(task.id)}
+              type="button"
+              title="Marcar como terminada"
+              className="p-1.5 px-2 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-400 border border-emerald-800/50 transition-all"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       )}
     </div>

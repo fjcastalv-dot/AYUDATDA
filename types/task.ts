@@ -4,6 +4,21 @@ export type TimerStatus = 'idle' | 'running' | 'paused' | 'completed';
 
 export type TrafficColor = 'green' | 'yellow' | 'red';
 
+export interface SubTask {
+  id: string;
+  title: string;
+  /** Duración específica designada para esta subtarea en minutos */
+  durationMinutes: number;
+  /** Segundos restantes en el temporizador */
+  remainingSeconds: number;
+  /** Estado de la subtarea */
+  status: 'pending' | 'active' | 'completed';
+  /** Fecha ISO de creación */
+  createdAt: string;
+  /** Fecha ISO de finalización */
+  completedAt?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -20,6 +35,10 @@ export interface Task {
   category?: string;
   /** Búfer de descompresión en minutos posterior a la tarea (ej. 5 o 10 min) */
   bufferMinutes: number;
+  /** Subtareas con distribución de tiempo específica */
+  subtasks?: SubTask[];
+  /** ID de la subtarea que se encuentra en foco actualmente */
+  activeSubtaskId?: string | null;
   /** Fecha ISO de creación */
   createdAt: string;
   /** Fecha ISO de finalización */

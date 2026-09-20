@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Task, ParkingItem } from '@/types/task';
+import { Task, SubTask, ParkingItem } from '@/types/task';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useHourglassTimer } from '@/hooks/useHourglassTimer';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 import { useDocumentPip } from '@/hooks/useDocumentPip';
-import { requestNotificationPermission } from '@/lib/audio';
+import { requestNotificationPermission, sound } from '@/lib/audio';
 
 import { Navbar } from '@/components/Navbar';
 import { SingleTaskView } from '@/components/SingleTaskView';
@@ -16,18 +16,45 @@ import { CalendarSyncPanel } from '@/components/CalendarSyncPanel';
 import { TaskManagerModal } from '@/components/TaskManagerModal';
 import { FloatingPipWidget } from '@/components/FloatingPipWidget';
 
-// Tareas iniciales de ejemplo si es la primera vez que se abre la app
+// Tareas iniciales de ejemplo demostrando la subdivisión de 60 min en 30m, 20m y 10m
 const INITIAL_TASKS: Task[] = [
   {
     id: 'demo-task-1',
     title: 'Redactar informe ejecutivo semanal',
     description: 'Enfocarse únicamente en los 3 logros principales y los bloqueos.',
     definitionOfDone: 'Documento exportado en PDF y enviado sin repasar formato más de una vez.',
-    durationMinutes: 25,
-    remainingSeconds: 25 * 60,
+    durationMinutes: 60,
+    remainingSeconds: 60 * 60,
     status: 'active',
     bufferMinutes: 10,
     createdAt: new Date().toISOString(),
+    activeSubtaskId: 'demo-subtask-1',
+    subtasks: [
+      {
+        id: 'demo-subtask-1',
+        title: 'Recopilar métricas y avances de la semana',
+        durationMinutes: 20,
+        remainingSeconds: 20 * 60,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'demo-subtask-2',
+        title: 'Redactar los 3 logros principales y 2 bloqueos',
+        durationMinutes: 30,
+        remainingSeconds: 30 * 60,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'demo-subtask-3',
+        title: 'Revisar ortografía básica y exportar a PDF',
+        durationMinutes: 10,
+        remainingSeconds: 10 * 60,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      },
+    ],
   },
   {
     id: 'demo-task-2',
@@ -52,8 +79,8 @@ const INITIAL_PARKING: ParkingItem[] = [
 
 export default function HomePage() {
   // Persistencia local en localStorage con fallback
-  const [tasks, setTasks] = useLocalStorage<Task[]>('tdah_tasks_v1', INITIAL_TASKS);
-  const [activeTaskId, setActiveTaskId] = useLocalStorage<string | null>('tdah_active_id_v1', 'demo-task-1');
+  const [tasks, setTasks] = useLocalStorage<Task[]>('tdah_tasks_v2', INITIAL_TASKS);
+  const [activeTaskId, setActiveTaskId] = useLocalStorage<string | null>('tdah_active_id_v2', 'demo-task-1');
   const [parkingItems, setParkingItems] = useLocalStorage<ParkingItem[]>('tdah_parking_v1', INITIAL_PARKING);
   const [soundEnabled, setSoundEnabled] = useLocalStorage<boolean>('tdah_sound_enabled', true);
 
@@ -84,10 +111,31 @@ export default function HomePage() {
     return tasks.find((t) => t.id === activeTaskId && t.status !== 'completed') || null;
   }, [tasks, activeTaskId]);
 
+  // Subtarea activa calculada
+  const activeSubtask = useMemo(() => {
+    if (!activeTask || !activeTask.subtasks || activeTask.subtasks.length === 0) return null;
+    if (activeTask.activeSubtaskId) {
+      const found = activeTask.subtasks.find((st) => st.id === activeTask.activeSubtaskId);
+      if (found) return found;
+    }
+    return activeTask.subtasks.find((st) => st.status !== 'completed') || activeTask.subtasks[0] || null;
+  }, [activeTask]);
+
   // Manejador al terminar el temporizador
   const handleTimerComplete = useCallback(() => {
-    // Si la tarea concluye el tiempo
+    // Al concluir el temporizador
   }, []);
+
+  // Determinar los minutos y el título asignados al temporizador
+  const timerInitialMinutes = activeSubtask
+    ? activeSubtask.durationMinutes
+    : activeTask
+    ? activeTask.durationMinutes
+    : 25;
+
+  const timerTaskTitle = activeSubtask
+    ? `${activeSubtask.title} • ${activeTask?.title}`
+    : activeTask?.title || 'Bloque de Foco';
 
   // Hook de temporizador semáforo
   const {
@@ -98,8 +146,8 @@ export default function HomePage() {
     reset: resetTimer,
     addMinutes,
   } = useHourglassTimer({
-    initialMinutes: activeTask ? activeTask.durationMinutes : 25,
-    taskTitle: activeTask?.title || 'Bloque de Foco',
+    initialMinutes: timerInitialMinutes,
+    taskTitle: timerTaskTitle,
     onComplete: handleTimerComplete,
     soundEnabled,
   });
@@ -107,12 +155,10 @@ export default function HomePage() {
   // Atajo global de teclado: Ctrl + Space o Cmd + K para el Parking Lot
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Atajo Ctrl+Espacio o Cmd+Espacio
       if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
         e.preventDefault();
         setIsParkingLotOpen((prev) => !prev);
       }
-      // Atajo complementario Ctrl+K o Cmd+K
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
         setIsParkingLotOpen((prev) => !prev);
@@ -133,13 +179,18 @@ export default function HomePage() {
     return () => window.removeEventListener('click', handleFirstInteraction);
   }, []);
 
-  // Acciones sobre tareas
+  // Acciones sobre tareas principales
   const handleSelectActiveTask = useCallback(
     (taskId: string) => {
       setActiveTaskId(taskId);
       const target = tasks.find((t) => t.id === taskId);
       if (target) {
-        resetTimer(target.durationMinutes);
+        if (target.subtasks && target.subtasks.length > 0) {
+          const firstPending = target.subtasks.find((st) => st.status !== 'completed') || target.subtasks[0];
+          resetTimer(firstPending.durationMinutes);
+        } else {
+          resetTimer(target.durationMinutes);
+        }
       }
     },
     [setActiveTaskId, tasks, resetTimer]
@@ -152,11 +203,11 @@ export default function HomePage() {
         id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         createdAt: new Date().toISOString(),
         status: 'pending',
+        subtasks: [],
       };
 
       setTasks((prev) => [...prev, newTask]);
 
-      // Si no había tarea activa, activar esta
       if (!activeTaskId) {
         setActiveTaskId(newTask.id);
         resetTimer(newTask.durationMinutes);
@@ -170,7 +221,12 @@ export default function HomePage() {
       setTasks((prev) =>
         prev.map((t) =>
           t.id === taskId
-            ? { ...t, status: 'completed', completedAt: new Date().toISOString() }
+            ? {
+                ...t,
+                status: 'completed',
+                completedAt: new Date().toISOString(),
+                subtasks: t.subtasks?.map((st) => ({ ...st, status: 'completed' })),
+              }
             : t
         )
       );
@@ -178,8 +234,14 @@ export default function HomePage() {
       // Buscar siguiente tarea pendiente
       const remainingPending = tasks.filter((t) => t.id !== taskId && t.status !== 'completed');
       if (remainingPending.length > 0) {
-        setActiveTaskId(remainingPending[0].id);
-        resetTimer(remainingPending[0].durationMinutes);
+        const nextTask = remainingPending[0];
+        setActiveTaskId(nextTask.id);
+        if (nextTask.subtasks && nextTask.subtasks.length > 0) {
+          const firstSt = nextTask.subtasks.find((st) => st.status !== 'completed') || nextTask.subtasks[0];
+          resetTimer(firstSt.durationMinutes);
+        } else {
+          resetTimer(nextTask.durationMinutes);
+        }
       } else {
         setActiveTaskId(null);
         resetTimer(25);
@@ -194,8 +256,9 @@ export default function HomePage() {
       if (activeTaskId === taskId) {
         const remaining = tasks.filter((t) => t.id !== taskId && t.status !== 'completed');
         if (remaining.length > 0) {
-          setActiveTaskId(remaining[0].id);
-          resetTimer(remaining[0].durationMinutes);
+          const nextTask = remaining[0];
+          setActiveTaskId(nextTask.id);
+          resetTimer(nextTask.durationMinutes);
         } else {
           setActiveTaskId(null);
           resetTimer(25);
@@ -203,6 +266,131 @@ export default function HomePage() {
       }
     },
     [setTasks, activeTaskId, tasks, setActiveTaskId, resetTimer]
+  );
+
+  // Acciones sobre subtareas
+  const handleAddSubtask = useCallback(
+    (taskId: string, title: string, durationMinutes: number) => {
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id !== taskId) return t;
+
+          const newSubtask: SubTask = {
+            id: `subtask-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            title,
+            durationMinutes,
+            remainingSeconds: durationMinutes * 60,
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+          };
+
+          const updatedSubtasks = [...(t.subtasks || []), newSubtask];
+          const updatedActiveId = t.activeSubtaskId || newSubtask.id;
+
+          // Si es la tarea activa y no había ninguna subtarea asignada, activar y reiniciar temporizador
+          if (t.id === activeTaskId && (!t.subtasks || t.subtasks.length === 0)) {
+            resetTimer(newSubtask.durationMinutes);
+          }
+
+          return {
+            ...t,
+            subtasks: updatedSubtasks,
+            activeSubtaskId: updatedActiveId,
+          };
+        })
+      );
+    },
+    [setTasks, activeTaskId, resetTimer]
+  );
+
+  const handleSelectSubtask = useCallback(
+    (taskId: string, subtaskId: string) => {
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id !== taskId) return t;
+          const targetSt = t.subtasks?.find((st) => st.id === subtaskId);
+          if (targetSt) {
+            resetTimer(targetSt.durationMinutes);
+          }
+          return {
+            ...t,
+            activeSubtaskId: subtaskId,
+          };
+        })
+      );
+    },
+    [setTasks, resetTimer]
+  );
+
+  const handleCompleteSubtask = useCallback(
+    (taskId: string, subtaskId: string) => {
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id !== taskId || !t.subtasks) return t;
+
+          const updatedSubtasks = t.subtasks.map((st) => {
+            if (st.id === subtaskId) {
+              const isCompleted = st.status === 'completed';
+              return {
+                ...st,
+                status: isCompleted ? ('pending' as const) : ('completed' as const),
+                completedAt: isCompleted ? undefined : new Date().toISOString(),
+              };
+            }
+            return st;
+          });
+
+          // Buscar la siguiente subtarea pendiente para saltar automáticamente
+          const nextPending = updatedSubtasks.find((st) => st.status !== 'completed');
+          const nextActiveId = nextPending ? nextPending.id : null;
+
+          if (nextPending) {
+            resetTimer(nextPending.durationMinutes);
+            if (soundEnabled) sound.playQuickClick();
+          } else {
+            // Todas las subtareas completadas
+            if (soundEnabled) sound.playCompletionTone();
+          }
+
+          return {
+            ...t,
+            subtasks: updatedSubtasks,
+            activeSubtaskId: nextActiveId,
+          };
+        })
+      );
+    },
+    [setTasks, resetTimer, soundEnabled]
+  );
+
+  const handleDeleteSubtask = useCallback(
+    (taskId: string, subtaskId: string) => {
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id !== taskId || !t.subtasks) return t;
+
+          const filtered = t.subtasks.filter((st) => st.id !== subtaskId);
+          let nextActiveId = t.activeSubtaskId;
+
+          if (t.activeSubtaskId === subtaskId) {
+            const nextPending = filtered.find((st) => st.status !== 'completed') || filtered[0] || null;
+            nextActiveId = nextPending ? nextPending.id : null;
+            if (nextPending) {
+              resetTimer(nextPending.durationMinutes);
+            } else {
+              resetTimer(t.durationMinutes);
+            }
+          }
+
+          return {
+            ...t,
+            subtasks: filtered,
+            activeSubtaskId: nextActiveId,
+          };
+        })
+      );
+    },
+    [setTasks, resetTimer]
   );
 
   // Acciones sobre el Parking Lot
@@ -236,7 +424,6 @@ export default function HomePage() {
         bufferMinutes: 10,
       });
 
-      // Marcar item como convertido
       setParkingItems((prev) =>
         prev.map((pi) => (pi.id === item.id ? { ...pi, status: 'converted' } : pi))
       );
@@ -297,11 +484,12 @@ export default function HomePage() {
       <div className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 flex flex-col justify-center">
         <SingleTaskView
           task={activeTask}
+          activeSubtask={activeSubtask}
           timerStatus={timerStatus}
           trafficState={trafficState}
           onStartTimer={startTimer}
           onPauseTimer={pauseTimer}
-          onResetTimer={() => resetTimer(activeTask?.durationMinutes)}
+          onResetTimer={() => resetTimer(timerInitialMinutes)}
           onAddMinutes={addMinutes}
           onCompleteTask={handleCompleteTask}
           onOpenParkingLot={() => setIsParkingLotOpen(true)}
@@ -311,6 +499,10 @@ export default function HomePage() {
           onToggleSound={() => setSoundEnabled((prev) => !prev)}
           isPipActive={isPipActive}
           onTogglePip={() => (isPipActive ? closePip() : openPip())}
+          onAddSubtask={handleAddSubtask}
+          onSelectSubtask={handleSelectSubtask}
+          onCompleteSubtask={handleCompleteSubtask}
+          onDeleteSubtask={handleDeleteSubtask}
         />
       </div>
 
@@ -319,12 +511,14 @@ export default function HomePage() {
         createPortal(
           <FloatingPipWidget
             task={activeTask}
+            activeSubtask={activeSubtask}
             timerStatus={timerStatus}
             trafficState={trafficState}
             onStartTimer={startTimer}
             onPauseTimer={pauseTimer}
             onAddMinutes={addMinutes}
             onCompleteTask={handleCompleteTask}
+            onCompleteSubtask={handleCompleteSubtask}
             onAddParkingItem={handleAddParkingItem}
           />,
           pipContainer
@@ -372,7 +566,7 @@ export default function HomePage() {
 
       {/* Barra de atajo rápido inferior sutil */}
       <footer className="py-3 px-4 border-t border-slate-900 bg-slate-950/60 text-center text-xs text-slate-400">
-        Tip TDAH: Presiona <kbd className="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-slate-300 border border-slate-800">Ctrl + Espacio</kbd> para aparcar distracciones o haz clic en <span className="text-emerald-400 font-semibold">📌 Ventanita</span> para fijar el temporizador siempre visible sobre tus otras aplicaciones.
+        Tip TDAH: Puedes subdividir tus tareas de 60 min asignando tiempos específicos a cada paso (ej. 30m, 20m, 10m). Presiona <kbd className="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-slate-300 border border-slate-800">Ctrl + Espacio</kbd> para aparcar distracciones o <span className="text-emerald-400 font-semibold">📌 Ventanita</span> para fijarlo en pantalla.
       </footer>
     </main>
   );

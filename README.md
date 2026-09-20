@@ -19,18 +19,23 @@ Construida con **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, **
    - Oculta las listas interminables de tareas pendientes que saturan la memoria de trabajo.
    - Presenta una **"Definición de Terminado" (Definition of Done)** obligatoria: un criterio concreto e indiscutible que le dice al cerebro exactamente cuándo parar, frenando el perfeccionismo compulsivo.
 
-3. **📌 Ventanita Flotante Siempre Visible (Picture-in-Picture / Always-on-Top):**
+3. **🧩 Subdivisión de Tareas con Presupuesto Temporal Específico:**
+   - Permite dividir tareas grandes (ej. 60 minutos) en subtareas más pequeñas con su propio tiempo asignado (ej. 30 min, 20 min, 10 min o personalizado).
+   - Barra visual de presupuesto que calcula en tiempo real los minutos asignados y los minutos restantes.
+   - El temporizador semáforo se enfoca en el paso activo (`Paso 1/3: 30 min`) y salta automáticamente al siguiente paso al concluir.
+
+4. **📌 Ventanita Flotante Siempre Visible (Picture-in-Picture / Always-on-Top):**
    - Basada en la API estándar de **Document Picture-in-Picture**.
    - Permite desacoplar el temporizador, el estado cromático semáforo y la Definición de Terminado en una **pequeña ventana flotante nativa que permanece fija por encima de cualquier otro programa en Windows** (Word, Excel, Visual Studio Code, videojuegos, etc.), exactamente igual a la vista compacta de la app de Reloj de Windows.
    - Si cambias de pestaña o minimizas el navegador, la ventanita sigue ahí mostrándote el tiempo restante y la tarea activa.
 
-4. **Parking Lot / Bloc de Estacionamiento (`Ctrl + Espacio` / `Cmd + K`):**
+5. **Parking Lot / Bloc de Estacionamiento (`Ctrl + Espacio` / `Cmd + K`):**
    - Cuando surge una idea repentina o tentación de saltar a otra cosa (*"¿y si ordeno las pestañas?"*), presionar `Ctrl + Espacio` permite escribirla y aparcarla en 2 segundos, sacándola de la mente sin romper el hiperfoco.
 
-4. **Búfer Automático en Google Calendar (5 a 15 min):**
+6. **Búfer Automático en Google Calendar (5 a 15 min):**
    - Agendar reuniones o tareas consecutivas sin descanso provoca el colapso de la función ejecutiva. La aplicación inserta automáticamente un colchón de descompresión programado en tu calendario.
 
-5. **Persistencia Local Fallback:**
+7. **Persistencia Local Fallback:**
    - Funciona de inmediato sin necesidad de crear cuentas ni configurar APIs mediante `localStorage`.
 
 ---
